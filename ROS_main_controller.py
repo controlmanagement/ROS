@@ -11,7 +11,7 @@ import time
 import threading
 
 from ros_start.msg import Status_antenna_msg
-from ros_start.msg import list_azel
+from ros_start.msg import list_azelmsg
 from std_msgs.msg import String
 
 class nanten_main_controller(object):
@@ -97,8 +97,8 @@ class nanten_main_controller(object):
                 else:
                     pass
                 self.con.azel_move(self.parameters['target_az'][i],self.parameters['target_el'][i],10000,12000)
-                self.command_az = self.parameters['target_az']
-                self.commamd_el = self.parameters['target_el']
+                self.command_az = self.parameters['target_az'][i]
+                self.commamd_el = self.parameters['target_el'][i]
 
     def emergency(self,req):
         rospy.loginfo('!!!emergency!!!')
@@ -126,7 +126,7 @@ if __name__ == '__main__':
     rospy.init_node('nanten_main_controller')
     rospy.loginfo('waiting publish nanten_main_controller')
     n.start_thread()
-    sub = rospy.Subscriber('list_azel', list_azel, n.set_parameter)
+    sub = rospy.Subscriber('list_azel', list_azelmsg, n.set_parameter)
     sub = rospy.Subscriber('emergency', String, n.emergency)
     rospy.spin()
     
