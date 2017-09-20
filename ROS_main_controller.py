@@ -109,7 +109,7 @@ class nanten_main_controller(object):
     def pub_status(self):
         while True:
             ###publish parameter
-            pub = rospy.Publisher('status',Status_antenna_msg, queue_size=10, latch = True)
+            pub = rospy.Publisher('status_antenna',Status_antenna_msg, queue_size=10, latch = True)
             status = Status_antenna_msg()
             status.limit_az = self.limit_az
             status.limit_el = self.limit_el
