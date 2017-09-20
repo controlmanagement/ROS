@@ -63,4 +63,5 @@ if __name__ == '__main__':
     n.test()
     sub = rospy.Subscriber('param_name', NECST_msg, n.set_parameter)
     sub = rospy.Subscriber('emergency', String, n.emergency)
+    rospy.spin()
     
