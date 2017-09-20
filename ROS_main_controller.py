@@ -1,129 +1,132 @@
 #!/usr/bin/env python
-
+"""
+2017/09/20 Shiotani
+main_controller part
+node name is 'nanten_main_controller'
+"""
 import rospy
-import time
-import nanten_main_controller_0911###kari
 import controller
-
 #import nanten_main_controller
-#from ros_start.srv import azel
-#from ros_start.srv import azelResponse
-from ros_start.srv import list_azel
-from ros_start.srv import list_azelResponse
-#from std_msgs.msg import String
+import time
+import threading
 
-from ros_start.msg import list_azelmsg
+from ros_start.msg import Status_antenna_msg
+from ros_start.msg import list_azel
+from std_msgs.msg import String
 
 class nanten_main_controller(object):
-    nan_ctrl = nanten_main_controller_0911.nanten_main_controller()
     con = controller.controller()
-    time_interval = 0.1
-    flag = 1
+    parameters = {
+        'az_list':0,
+        'el_list':0,
+        'start_time':0,
+        'flag':0
+        }
+    limit_flag = 0###(0/1=okay/NG)
+    limit_az = True###(True/False = okay/limit)
+    limit_el = True
+    command_az = 0
+    command_el = 0
+    current_az = 0
+    current_el = 0
+
+    def __init__(self):
+        pass
     
-    def get_azel(self,req):
-        self.flag = 1
-        rospy.loginfo('called get_azel func')
-        self.list_az = req.az_list
-        self.list_el = req.el_list
-        self.start_time = req.start_time
-        #self.Time = req.now
-        #self.Duration = req.dt
-        print(self.list_az,self.list_el,'list_az&el')
-        #print(self.Time,self.Duration)
-        #rospy.loginfo(self.Time)
-        #rospy.loginfo(self.Duration)
+    def start_thread(self):
+        th = threading.Thread(target = self.act_azel)
+        th.setDaemon(True)
+        th.start()
+        th2 = threading.Thread(target = self.pub_status)
+        th2.setDaemon(True)
+        th2.start()
 
-        return list_azelResponse(success = self.act_azel(),error_msg = "error test")###!!!
+    def test(self):
+        return
 
-    def get_azel2(self,message):
-        self.list_az = message.az_list
-        self.list_el = message.el_list
-        self.start_time = message.start_time
-        self.act_azel()
-        
-    def test2(self):
-        self.con.test()
-
-    def callback(self,message):
-        rospy.loginfo("I heard %s", message.data)
-        self.flag = 0
-    
+    def set_parameter(self,req):
+        self.parameters['az_list'] = req.az_list
+        self.parameters['el_list'] = req.el_list
+        self.parameters['start_time'] = req.start_time
+        return
 
     def limit_check(self):
-        ###azel limit check
-        #self.limit_flag = 0#(0/1=okey/Not okay)
-        for i in range(len(self.list_az)):
-            print(self.list_az[i],self.list_el[i])
-            if self.list_az[i] >= 280*3600 or  self.list_az[i] <=-280*3600:#kari
-                #print('%')
-                #self.limit_flag = 1
-                rospy.loginfo('!!!limit!!!')
+        for i in range(len(self.parameters['target_az'])):
+            print(self.parameters['target_az'][i],self.parameters['target_el'][i])
+            if self.parameters['target_az'][i] >= 280*3600 or  self.parameters['target_az'][i] <=-280*3600:#kari
+                rospy.loginfo('!!!limit az!!!')
+                self.limit_flag = 1
                 return False
-            if self.list_el[i] >= 89*3600 or  self.list_el[i] <= 0*3600:#kari
-                #print('$')
-                #self.limit_flag = 1
-                rospy.loginfo('!!!limit!!!')
+            if self.parameters['target_el'][i] >= 89*3600 or  self.parameters['target_el'][i] <= 0*3600:#kari
+                rospy.loginfo('!!!limit el!!!')
+                self.limit_flag = 1
                 return False
             else:
-                pass
-            #print('#')
+                return True
 
     def act_azel(self):
-        self.success = self.limit_check()
-        print(self.success,'#')
-        """
-        if self.success:
-            pass
-        else:
-            print('!!limit!!')
-            return self.success
-        """
-        """
-        if self.success == False:
-            rospy.loginfo('!!!limit!!!')
-            return self.success
-        """
-        
-        current_time = time.time()
-        #d = self.list_time[0] - current_time
-        d = self.start_time-current_time
-        rospy.loginfo(d)
-        
-        if d < 0:
-            rospy.loginfo('azel_time is backward!!')
-            #return azelResponse(success = True)
-            self.success = False
-            return self.success
-        
-        elif d > 100:
-            rospy.loginfo('timeout %f'%d)
-            self.success = False
-            return self.success
-        
-        print(d)
-        time.sleep(d)
-        
-        for i in range(len(self.list_az)):
-            if self.flag:
+        while True:
+            if not self.limit_flag:
+                rospy.loginfo('limit_flag')
+                time.sleep(1)
+                continue
+            ###start time check###
+            C_time = time.time()
+            dt = self.start_time - C_time
+            if dt < 0:
+                rospy.loginfo('!!!Start_time is backward!!!')
+                time.sleep(0.5)###
+                continue
+            if dt > 10000000:
+                rospy.loginfo('!!!Start_time is too distant future')
+                time.sleep(0.5)###
+                continue
+            ###start time check end###
+            
+            ###limit check###
+            if self.limit_check():
                 pass
             else:
-                break
-            #self.nan_ctrl.azel_move(self.list_az[i],self.list_el[i],10000,12000)
-            #track = self.nan_ctrl.azel_move_test(self.list_az[i],self.list_el[i],10000,12000)#return 0 or 1 but I have no idea
-            self.con.azel_move(self.list_az[i],self.list_el[i],10000,12000)
-            time.sleep(self.time_interval-0.001)###ros time dousuru?
+                continue
+            ###limit check end###
 
-        rospy.loginfo('end azel_list')
-        return True
-        
+            ###move_azel####
+            for i in range(len(self.parameters['target_az'])):
+                if self.emergency_flag:
+                    break
+                else:
+                    pass
+                self.con.azel_move(self.parameters['target_az'][i],self.parameters['target_el'][i],10000,12000)
+                self.command_az = self.parameters['target_az']
+                self.commamd_el = self.parameters['target_el']
 
-        
+    def emergency(self,req):
+        rospy.loginfo('!!!emergency!!!')
+        rospy.loginfo('!!!stop azel_move!!!')
+        self.emergency_flag = 1
+        return
+
+    def pub_status(self):
+        while True:
+            ###publish parameter
+            pub = rospy.Publisher('status',Status_antenna_msg, queue_size=10, latch = True)
+            status = Status_antenna_msg()
+            status.limit_az = self.limit_az
+            status.limit_el = self.limit_el
+            status.command_az = self.parameters['target_az']
+            status.command_el = self.parameters['targer_el']
+            status.current_az = self.current_az#mitei(encoder)
+            status.current_el = self.current_el#mitei(encoder)
+            pub.publish(status)
+            time.sleep(0.5)###kari
+            return
+
 if __name__ == '__main__':
-    rospy.init_node('nanten_main_controller')
-    rospy.loginfo('waiting serve')
     n = nanten_main_controller()
-    #sub = rospy.Subscriber('chatter', String, n.callback)
-    sub = rospy.Subscriber('list_azel',list_azelmsg,n.get_azel2)
-    #service_server = rospy.Service('list_azel',list_azel,n.get_azel)
-    time.sleep(10)
-    #rospy.spin()
+    rospy.init_node('nanten_main_controller')
+    rospy.loginfo('waiting publish nanten_main_controller')
+    n.start_thread()
+    sub = rospy.Subscriber('list_azel', list_azel, n.set_parameter)
+    sub = rospy.Subscriber('emergency', String, n.emergency)
+    rospy.spin()
+    
