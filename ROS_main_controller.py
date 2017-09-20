@@ -20,7 +20,9 @@ class nanten_main_controller(object):
         'az_list':0,
         'el_list':0,
         'start_time':0,
-        'flag':0
+        'flag':0,
+        'target_az':0,
+        'target_el':0
         }
     limit_flag = 0###(0/1=okay/NG)
     limit_az = True###(True/False = okay/limit)
@@ -114,7 +116,7 @@ class nanten_main_controller(object):
             status.limit_az = self.limit_az
             status.limit_el = self.limit_el
             status.command_az = self.parameters['target_az']
-            status.command_el = self.parameters['targer_el']
+            status.command_el = self.parameters['target_el']
             status.current_az = self.current_az#mitei(encoder)
             status.current_el = self.current_el#mitei(encoder)
             pub.publish(status)
