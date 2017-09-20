@@ -10,16 +10,17 @@ class weather_controller(object):
     data = [0]*20
 
     def __init__(self):
-        rospy.init_node = ("weather_status")
+        rospy.init_node("weather_status")
         pass
 
     def pub_func(self):
-        pub = rospy.Publisher("status_weather", weather_msg, queue_size = 10, latch = True)
-        msg = weather_msg()
-        while True:
+        pub = rospy.Publisher("status_weather", Weather_msg, queue_size = 10, latch = True)
+        msg = Weather_msg()
+        while not rospy.is_shutdown():
+            print("loop...")
             ret = self.get_weather()
             msg.in_temp = ret[6]
-            msg.out_tmp = ret[7]
+            msg.out_temp = ret[7]
             msg.in_humi = ret[8]
             msg.out_humi = ret[9]
             msg.wind_sp = ret[10]
@@ -69,6 +70,6 @@ class weather_controller(object):
 
         return self.data
 
-if __name__ = "__main__":
+if __name__ == "__main__":
     wc = weather_controller()
     wc.pub_func()
