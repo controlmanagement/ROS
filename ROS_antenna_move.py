@@ -1,27 +1,30 @@
 #!/usr/bin/env python
 """
-2017/09/21 Shiotani
+2017/09/22 Shiotani
 main_controller part
 node name is 'nanten_main_controller'
 """
 import rospy
 import numpy
-import controller
+import controller#for check
 #import nanten_main_controller
 import time
 import threading
-import board
-
+#import board
+#import board_0914
+import test_board
 import math
 import sys
 sys.path.append('/home/amigos/python/')
 import numpy as np
-#mport pyinterface
+#import pyinterface
 #import antenna_enc
 
 from ros_start.msg import Status_antenna_msg
-from ros_start.msg import list_azel
+from ros_start.msg import list_azelmsg
+from ros_start.msg import Status_encoder_msg
 from std_msgs.msg import String
+from std_msgs.msg import Bool
 
 class nanten_main_controller(object):
     con = controller.controller()
@@ -32,8 +35,12 @@ class nanten_main_controller(object):
         'flag':0
         }
     enc_parameter = {
+        'az_enc':0,
+        'el_enc':0
         }
-    
+    B_time = 1
+
+    emergency_flag = 0
     limit_flag = 0###(0/1=okay/NG)
     limit_az = True###(True/False = okay/limit)
     limit_el = True
@@ -60,7 +67,7 @@ class nanten_main_controller(object):
     target_az_array = []
     target_el_array = []
 
-    error_box = [0]*32
+    #error_box = [0]*32###0921
     #azv_before = elv_before = 0
     az_enc_before = el_enc_before = 0
     az_rate = el_rate = 0
@@ -103,8 +110,10 @@ class nanten_main_controller(object):
     end_flag = 0
     
     def __init__(self):
-        self.dio = pyinterface.create_gpg2000(3)
-        self.board = board.board()
+        #self.board = board.board()#N
+        #self.board = board_0914.board()###for check temporary
+        self.board = test_board.board()
+        #self.dio = pyinterface.create_gpg2000(3)
         #self.enc = antenna_enc.enc_monitor_client('172.20.0.11',8002)###0921
         #self.enc = antenna_enc.enc_controller()
         #ret = self.enc.read_azel()###0921
@@ -124,45 +133,60 @@ class nanten_main_controller(object):
         return
 
     def set_parameter(self, req):
+        rospy.loginfo('set_parameter')
         self.parameters['az_list'] = req.az_list
         self.parameters['el_list'] = req.el_list
         self.parameters['start_time'] = req.start_time
         return
 
     def set_enc_parameter(self, req):
-        #self.enc_parameter[''] = req.enc_az###example        
+        #rospy.loginfo('set_enc_parameter')
+        #rospy.loginfo(req.enc_az)
+        self.enc_parameter['az_enc'] = req.enc_az
+        self.enc_parameter['el_enc'] = req.enc_el 
+        return
 
     def limit_check(self):
-        for i in range(len(self.parameters['target_az'])):
-            print(self.parameters['target_az'][i],self.parameters['target_el'][i])
-            if self.parameters['target_az'][i] >= 280*3600 or  self.parameters['target_az'][i] <=-280*3600:#kari
-                rospy.loginfo('!!!limit az!!!')
+        for i in range(len(self.parameters['az_list'])):
+            print(self.parameters['az_list'][i],self.parameters['el_list'][i])
+            if self.parameters['az_list'][i] >= 280*3600 or  self.parameters['az_list'][i] <=-280*3600:#kari
+                rospy.logwarn('!!!limit az!!!')
+                rospy.logwarn(self.parameters['az_list'][i])
                 self.limit_flag = 1
                 return False
-            if self.parameters['target_el'][i] >= 89*3600 or  self.parameters['target_el'][i] <= 0*3600:#kari
-                rospy.loginfo('!!!limit el!!!')
+            if self.parameters['el_list'][i] >= 89*3600 or  self.parameters['el_list'][i] <= 0*3600:#kari
+                rospy.logwarn('!!!limit el!!!')
+                rospy.logwarn(self.parameters['el_list'][i])
                 self.limit_flag = 1
                 return False
             else:
                 return True
 
     def act_azel(self):
+        rospy.loginfo('start_time_check')
         while True:
-            if not self.limit_flag:
-                rospy.loginfo('limit_flag')
+            if self.limit_flag:
                 time.sleep(1)
                 continue
             ###start time check###
             C_time = time.time()
-            dt = self.start_time - C_time
+            if self.B_time == self.parameters['start_time']:
+                time.sleep(0.01)
+                continue
+            
+            self. B_time = self.parameters['start_time']
+            dt = self.parameters['start_time'] - C_time
+            
             if dt < 0:
-                rospy.loginfo('!!!Start_time is backward!!!')
+                rospy.logwarn('!!!Start_time is backward!!!')
+                rospy.loginfo(dt)
                 time.sleep(0.5)###
                 continue
             if dt > 10000000:
                 rospy.loginfo('!!!Start_time is too distant future')
                 time.sleep(0.5)###
                 continue
+            time.sleep(dt)
             ###start time check end###
             
             ###limit check###
@@ -173,15 +197,35 @@ class nanten_main_controller(object):
             ###limit check end###
 
             ###move_azel####
-            for i in range(len(self.parameters['target_az'])):
+            for i in range(len(self.parameters['az_list'])):
                 if self.emergency_flag:
+                    rospy.logwarn('emergency_move_azel')
                     break
                 else:
                     pass
-                self.con.azel_move(self.parameters['target_az'][i],self.parameters['target_el'][i],10000,12000)
-                #self.azel_move(self.parameters['target_az'][i],self.parameters['target_el'][i],10000,12000)
-                self.command_az = self.parameters['target_az'][i]
-                self.commamd_el = self.parameters['target_el'][i]
+                #self.con.azel_move(self.parameters['az_list'][i],self.parameters['el_list'][i],10000,12000)
+                #rospy.loginfo(self.parameters['az_list'][i])
+                #rospy.loginfo( self.parameters['el_list'][i])
+                self.command_az = self.parameters['az_list'][i]
+                self.command_el = self.parameters['el_list'][i]
+                self.azel_move(self.parameters['az_list'][i],self.parameters['el_list'][i],10000,12000)
+                self.target_az =  self.parameters['az_list'][i]
+                self.target_el = self.parameters['el_list'][i]
+                a = float(time.time())
+                b = float((self.parameters['start_time'])+0.1*(i+1))
+                c = b-a
+                #print(a,b,c)
+                time.sleep(c)
+                last = i
+            rospy.logwarn('end')
+            for w in range(100):
+                self.azel_move(self.parameters['az_list'][last],self.parameters['el_list'][last],10000,12000)
+                time.sleep(0.1)
+                continue
+
+            #self.board.out_word("FBIDIO_OUT1_16", 0)
+            #self.board.out_word("FBIDIO_OUT17_32", 0)
+
 
 #module part
 
@@ -282,29 +326,38 @@ class nanten_main_controller(object):
     """
     #ROS_version
     #cur_az cur_el means encoder_azel
-    def azel_move(self, az_arcsec, el_arcsec, cur_az, cur_el, az_max_rate, el_max_rate):
+    def azel_move(self, az_arcsec, el_arcsec, az_max_rate, el_max_rate):
+    #def azel_move(self, az_max_rate = 10000, el_max_rate = 10000):
         test_flag = 1
+        
         self.indaz = az_arcsec
         self.indel = el_arcsec
-    
-        if abs(az_arcsec - cur_az) >= 1 or abs(el_arcsec - cur_el) > 1:
+        
+
+        self.enc_az = self.enc_parameter['az_enc']
+        self.enc_el = self.enc_parameter['el_enc']
+            
+        if abs(az_arcsec - self.enc_az) >= 1 or abs(el_arcsec - self.enc_el) > 1:###self.enc_az is provisonal
             b_time = time.time()
             self.move_azel(az_arcsec, el_arcsec, az_max_rate, el_max_rate)
-            ret = self.enc.read_azel()
-            
+            #time.sleep()#0922
+            #ret = self.enc.read_azel()###0921
+                
             interval = time.time()-b_time
             if interval <= 0.01:
                 time.sleep(0.01-interval)
+                    
+            else:
+                #self.dio.ctrl.out_word("FBIDIO_OUT1_16", 0)
+                #self.dio.ctrl.out_word("FBIDIO_OUT17_32", 0)
+                self.board.out_word("FBIDIO_OUT1_16", 0)
+                self.board.out_word("FBIDIO_OUT17_32", 0)
+                #time.sleep(0.02)#0922
+                return 0
+                
+            return 1
             
-        else:
-            #self.dio.ctrl.out_word("FBIDIO_OUT1_16", 0)
-            #self.dio.ctrl.out_word("FBIDIO_OUT17_32", 0)
-            self.board.out_word("FBIDIO_OUT1_16", 0)
-            self.board.out_word("FBIDIO_OUT17_32", 0)
-            time.sleep(0.02)
-            return 0
-        return 1
-    
+            
     def move_azel(self, az_arcsec, el_arcsec, az_max_rate = 16000, el_max_rate = 12000, m_bStop = 'FALSE'):
         MOTOR_MAXSTEP = 1000
         #MOTOR_AZ_MAXRATE = 16000
@@ -313,6 +366,7 @@ class nanten_main_controller(object):
         stop_flag = 0
         
         ret = self.calc_pid(az_arcsec, el_arcsec, az_max_rate, el_max_rate)
+        rospy.loginfo(ret)
         az_rate_ref = ret[0]
         el_rate_ref = ret[1]
         Az_track_flag = ret[2]
@@ -363,16 +417,19 @@ class nanten_main_controller(object):
         
         
         #for 1st limit
-        #ret = self.dio.ctrl.in_byte("FBIDIO_IN1_8")
+        """NEED but error 0922
+        ret = self.dio.ctrl.in_byte("FBIDIO_IN1_8")
+
         if (ret>>2 & 0x01) == 1:
             pass
         else:
             dummy = 0
             stop_flag = 1
-        
+        """
         
         #dummy=m_bStop==TRUE?m_stop_rate_az:motor_param.az_rate_ref;
-        self.dio.ctrl.out_word("FBIDIO_OUT1_16", dummy)
+        #self.dio.ctrl.out_word("FBIDIO_OUT1_16", dummy)#0922
+        self.board.out_word("FBIDIO_OUT1_16", dummy)
         #dioOutputWord(CONTROLER_BASE2,0x00,dummy)  output port is unreliable
         self.az_rate_d = dummy
         
@@ -380,23 +437,26 @@ class nanten_main_controller(object):
             dummy = self.m_stop_rate_el
         else:
             dummy = int(self.el_rate_d)
-        
+        """NEED but error 0922
         if (ret>>3 & 0x01) == 1:
             pass
         else:
             dummy = 0
             stop_flag = 1
+        """
         
         #dummy=m_bStop==TRUE?m_stop_rate_el:motor_param.el_rate_ref;
         #self.dio.ctrl.out_word("FBIDIO_OUT17_32", dummy)#0921
         self.board.out_word("FBIDIO_OUT17_32", dummy)
         #dioOutputWord(CONTROLER_BASE2,0x02,dummy);
         self.el_rate_d = dummy
+        
         if stop_flag:
+            rospy.logwarn('')
             sys.exit()
         return [Az_track_flag, El_track_flag]
 
-"""pid part"""
+    """pid part"""
 
     def calc_pid(self, az_arcsec, el_arcsec, az_max_rate, el_max_rate):
         # Default
@@ -420,11 +480,12 @@ class nanten_main_controller(object):
         s_el_coeff = 0.
         """
         
-        f = open('/home/amigos/NECST/soft/obs/telescope_nanten/PID_param.txt')
-        param = f.read()
-        f.close()
-        line1=param.split('\n')
-        
+        #f = open('/home/amigos/NECST/soft/obs/telescope_nanten/PID_param.txt')#N
+        #param = f.read()#N
+        #f.close()#N
+        #line1=param.split('\n')#N
+
+        """
         p_az_coeff = float(line1[0])
         i_az_coeff = float(line1[1])
         d_az_coeff = float(line1[2])
@@ -433,7 +494,15 @@ class nanten_main_controller(object):
         i_el_coeff = float(line1[5])
         d_el_coeff = float(line1[6])
         s_el_coeff = float(line1[7])
-        
+        """
+        p_az_coeff = 3.
+        i_az_coeff = 2.
+        d_az_coeff = 0
+        s_az_coeff = 0
+        p_el_coeff = 3.
+        i_el_coeff = 3.
+        d_el_coeff = 0
+        s_el_coeff = 0
         
         DEG2ARCSEC = 3600.
         m_bAzTrack = "FALSE"
@@ -459,11 +528,12 @@ class nanten_main_controller(object):
         enc_thread.join()
         """
         
-        
+        #"""not need tabun
         if self.end_flag:
             for i in range(2000):
                 print("!!!end!!!")
             sys.exit()
+        #"""
         
         #ret = self.enc.read_azel()
         #az_enc = ret[0]
@@ -475,8 +545,10 @@ class nanten_main_controller(object):
         """
 
         """ROS_version"""
-        az_enc = self.
-        el_enc = self.
+        az_enc = self.enc_parameter['az_enc']
+        el_enc = self.enc_parameter['el_enc']
+        rospy.loginfo(az_enc)
+        rospy.loginfo(el_enc)
         
         
         
@@ -758,33 +830,42 @@ class nanten_main_controller(object):
 
 
     def emergency(self,req):
-        rospy.loginfo('!!!emergency!!!')
-        rospy.loginfo('!!!stop azel_move!!!')
-        self.emergency_flag = 1
+        if req.bool:
+            rospy.logwarn('!!!emergency!!!')
+            self.emergency_flag = 1
+            rospy.warn('!!!stop azel velocity =>0!!!')
+            self.board.out_word("FBIDIO_OUT1_16", 0)
+            self.board.out_word("FBIDIO_OUT17_32", 0)
+            rospy.warn('!!!exit ROS_antenna.py!!!')
+            sys.exit
+        
+        
+        
         return
 
     def pub_status(self):
-        while True:
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
             ###publish parameter
-            pub = rospy.Publisher('status',Status_antenna_msg, queue_size=10, latch = True)
+            pub = rospy.Publisher('status_antenna',Status_antenna_msg, queue_size=10, latch = True)
             status = Status_antenna_msg()
             status.limit_az = self.limit_az
             status.limit_el = self.limit_el
-            status.command_az = self.parameters['target_az']
-            status.command_el = self.parameters['targer_el']
-            status.current_az = self.current_az#mitei(encoder)
-            status.current_el = self.current_el#mitei(encoder)
+            status.command_az = self.command_az
+            status.command_el = self.command_el
+            #rospy.loginfo(self.command_az)
+            #rospy.loginfo(self.command_el)
             pub.publish(status)
-            time.sleep(0.5)###kari
-            return
+            rate.sleep()
+            continue
 
 if __name__ == '__main__':
+    rospy.init_node('antenna_move')
     n = nanten_main_controller()
     n.start_thread()
-    rospy.init_node('nanten_main_controller')
     rospy.loginfo('waiting publish nanten_main_controller')
-    rospy.Subscriber('list_azel', list_azel, n.set_parameter)
-    rospy.Subscriber('emergency', String, n.emergency)
-    rospy.Subscriber('antenna_enc', antenna_enc, n.set_enc_paramater)
+    rospy.Subscriber('list_azel', list_azelmsg, n.set_parameter)
+    rospy.Subscriber('emergency', Bool, n.emergency)
+    rospy.Subscriber('status_encoder', Status_encoder_msg, n.set_enc_parameter)
     rospy.spin()
     
