@@ -8,46 +8,45 @@ from pyslalib import slalib
 import coord
 placoord = coord.coord_calc()
 import rospy
-from ros_start.srv import list_azel
-from ros_start.srv import list_azelResponse
+
+from ros_start.msg import vel_msg
+from ros_start.msg import move_msg
+from ros_start.msg import Status_encoder_msg
 from ros_start.msg import list_azelmsg
 
 class antenna_nanten(object):
 
     off_list = {"off_az":0, "off_el":0, "off_j2000_ra":0, "off_j2000_dec":0, "off_b1950_ra":0, "off_b1950_dec":0,  "off_l":0, "off_b":0}
-    rospy.init_node("antenna_server")
     longitude = -67.70308139*math.pi/180
     latitude = -22.96995611*math.pi/180
     height = 4863.85
     #temporary dut1
     dut1 = -0.20489  #delta UT:  UT1-UTC (UTC seconds)
     tv = ""
-    
+    enc_az = ""
+    enc_el = ""
+
+
+
     def __init__(self):                        
         pass 
     
     def read_controller(self):
-        from ros_start.msg import drive_msg
-        from ros_start.srv import NECSTsrvResponse
-        from ros_start.msg import drive_msg
-        from ros_start.msg import vel_msg
-        from ros_start.msg import move_msg
-        from ros_start.msg import dome_drive_msg
-        from ros_start.msg import dome_move_msg
-        from ros_start.msg import membrane_msg
-        from ros_start.srv import list_azel
-        from ros_start.srv import list_azelResponse
-        rospy.loginfo("Read ok ")
-        rospy.Subscriber('antenna_drive', drive_msg, self.drive_check)
+        rospy.init_node("antenna_server")
+        rospy.loginfo(" Read ok ")
+
+        #rospy.Subscriber('antenna_drive', drive_msg, self.drive_check)
         rospy.Subscriber('antenna_vel', vel_msg, self.velocity_move)
         rospy.Subscriber('antenna_radec', move_msg, self.radec_move)
         rospy.Subscriber('antenna_galactic', move_msg, self.galactic_move)
         rospy.Subscriber('antenna_planet', move_msg, self.planet_move)
-        rospy.Subscriber('antenna_dome_drive', dome_drive_msg, self.dome_drive_check)
-        rospy.Subscriber('antenna_dome_move', dome_move_msg, self.dome_move)
-        rospy.Subscriber('antenna_membrane', membrane_msg, self.membrane)
-        rospy.spin()
+        #rospy.Subscriber('antenna_dome_drive', dome_drive_msg, self.dome_drive_check)
+        #rospy.Subscriber('antenna_dome_move', dome_move_msg, self.dome_move)
+        #rospy.Subscriber('antenna_membrane', membrane_msg, self.membrane)
         
+        rospy.spin()
+
+    '''
     def drive_check(self, req):
         if req.drive == 1:
             self.antenna.contactor_on()
@@ -57,10 +56,49 @@ class antenna_nanten(object):
             self.antenna.drive_off()
         else:
             rospy.logerr("drive_error")
+            '''
+    def note_encoder(self, req):
+        self.enc_az = req.enc_az
+        self.enc_el = req.enc_el
+        return
 
 
-    def velocity_move(self,az_speed,el_speed,dist_arcsec = 5 * 3600):
-        # calc
+    def velocity_move(self, req):
+        rospy.Subscriber("status_encoder", Status_encoder_msg, self.note_encoder)
+        #az_speed, el_speed, dist_arcsec = 5 * 3600
+        pub = rospy.Publisher("list_azel", list_azelmsg, queue_size = 10, latch=True)
+        azel = list_azelmsg()
+        dist = 0
+        az_list = []
+        el_list = []
+        #if dist_arcsec < 0:
+            #rospy.logerr("Please, dist_arcsec > 0.\n")
+            #print("Please, dist_arcsec > 0.\n")
+        tv = time.time() + 1
+        azel.start_time = tv
+        init_az = self.enc_az
+        init_el = self.enc_el
+        print("ok")
+        dt = 1
+        time.sleep(0.5)
+        print("enc_az",type(self.enc_az))
+        print("enc_el",type(self.enc_el))
+        init_az = self.enc_az
+        init_el = self.enc_el
+        while dist < req.dist:
+            _az = req.az_speed*dt + init_az
+            _el = req.el_speed*dt + init_el
+            az_list.append(_az)
+            el_list.append(_el)
+            dist = abs(req.az_speed*dt) + abs(req.el_speed*dt)
+            dt += 0.1
+        print(self.enc_az)
+        print(self.enc_el)
+
+        azel.az_list = az_list
+        azel.el_list = el_list
+        pub.publish(azel)
+        #print(az_list, el_list,tv)
         return
     
     def radec_move(self, req):
@@ -73,7 +111,6 @@ class antenna_nanten(object):
         temp = 300#float(condition[6])+273.
         press = 1013#float(condition[12])
         humid = 20#float(condition[9])/100.
-        rospy.loginfo("ok")
         if req.offcoord.lower() == req.code_mode and req.dcos == 1:
             gy += off_y/3600.*math.pi/180
             gx += (off_x/3600.*math.pi/180)/math.cos(gy)
@@ -84,49 +121,74 @@ class antenna_nanten(object):
         ra = gx*180./math.pi
         dec = gy*180./math.pi
         tv = time.time()
-        for i in range(300):
-            ret = self.convert(ra, dec, 0, req.code_mode, req.off_x, req.off_y, req.offcoord)
-            ret = self.create_azel_list(ret[0], ret[1], req.lamda, req.hosei, tv+i)
-            pub = rospy.Publisher("list_azel", list_azelmsg, queue_size = 10)
-            azel = list_azelmsg()
-            azel.az_list = ret[0]
-            azel.el_list = ret[1]
-            azel.start_time = ret[2]
-            print(ret[0],ret[1],ret[2])
-            pub.publish(azel)
-        """
-        if response.success:
-            rospy.loginfo('set [%s] success' %("azel_list"))
-        else:
-            rospy.logerr('set [%s] failed' %("azel_list"))
-            """
-        return
-    
-    def galactic_move(self, req):
-        gx = l*math.pi/180.
-        gy = b*math.pi/180.
-        condition = 10#self.weather.read_weather()
-        temp = 300#float(condition[6])+273.
-        press = 1013#float(condition[12])
-        humid = 20#float(condition[9])/100.
-        if req.offcoord.lpwer() == "galactic" and req.dcos == 1:
-            gy += off_y/3600.*math.pi/180
-            gx += (off_x/3600.*math.pi/180)/math.cos(gy)
-            off_x = 0
-            off_y = 0
-        else:
-            pass
-        l = gx*180./math.pi*3600.
-        b = gy*180./math.pi*3600.
-        ret = self.convert(l, b, 0, "galactic", req.off_x, req.off_y, req.offcoord)
-        ret = self.create_azel_list(ret[0], ret[1], req.lamda, req.hosei)
+        #for i in range(300):
+        ret = self.convert(ra, dec, 0, req.code_mode, req.off_x, req.off_y, req.offcoord)
+        ret = self.create_azel_list(ret[0], ret[1], req.lamda, req.hosei, num=300)
 
+        pub = rospy.Publisher("list_azel", list_azelmsg, queue_size = 10, latch=True)
+        azel = list_azelmsg()
+        azel.az_list = ret[0]
+        azel.el_list = ret[1]
+        azel.start_time = ret[2]
+        print("az : ", ret[0][0]/3600.)
+        print("el : ", ret[1][0]/3600.)
+        print("time : ", ret[2])
+        rospy.loginfo("success publish\n")
+        pub.publish(azel)
+
+        '''
         set_status = rospy.ServiceProxy("list_azel", list_azel)
         response = set_status(ret[0], ret[1], ret[2])
         if response.success:
             rospy.loginfo('set [%s] success' %("azel_list"))
         else:
             rospy.logerr('set [%s] failed' %("azel_list"))
+            '''
+
+        return
+    
+    def galactic_move(self, req):
+        #pub = rospy.Publisher("list_azel", list_azelmsg, queue_size = 10, latch=True)
+        #azel = list_azelmsg()
+        gx = req.x*math.pi/180.
+        gy = req.y*math.pi/180.
+        condition = 10#self.weather.read_weather()
+        temp = 300#float(condition[6])+273.
+        press = 1013#float(condition[12])
+        humid = 20#float(condition[9])/100.
+        if req.offcoord.lower() == "galactic" and req.dcos == 1:
+            gy += off_y/3600.*math.pi/180
+            gx += (off_x/3600.*math.pi/180)/math.cos(gy)
+            off_x = 0
+            off_y = 0
+        else:
+            pass
+        l = gx*180./math.pi
+        b = gy*180./math.pi
+        ret = self.convert(l, b, 0, "galactic", req.off_x, req.off_y, req.offcoord)
+        print("koko")
+        ret = self.create_azel_list(ret[0], ret[1], req.lamda, req.hosei, num=300)
+        print("okok")
+        
+        pub = rospy.Publisher("list_azel", list_azelmsg, queue_size = 10, latch=True)
+        azel = list_azelmsg()
+        azel.az_list = ret[0]
+        azel.el_list = ret[1]
+        azel.start_time = ret[2]
+        print("az : ", ret[0][0]/3600.)
+        print("el : ", ret[1][0]/3600.)
+        print("time : ", ret[2])
+        rospy.loginfo("success publish\n")
+        pub.publish(azel)
+
+        '''
+        set_status = rospy.ServiceProxy("list_azel", list_azel)
+        response = set_status(ret[0], ret[1], ret[2])
+        if response.success:
+            rospy.loginfo('set [%s] success' %("azel_list"))
+        else:
+            rospy.logerr('set [%s] failed' %("azel_list"))
+            '''
 
         return
     
@@ -138,14 +200,27 @@ class antenna_nanten(object):
         press = 1013#float(condition[12])
         humid = 20#float(condition[9])/100.
         ret = self.convert(0, 0, req.ntarg, "planet", req.off_x, req.off_y, req.offcoord)
-        ret = self.create_azel_list(ret[0], ret[1], req.lamda, req.hosei)
-        
+        ret = self.create_azel_list(ret[0], ret[1], req.lamda, req.hosei, num=300)
+
+        pub = rospy.Publisher("list_azel", list_azelmsg, queue_size = 10, latch=True)
+        azel = list_azelmsg()
+        azel.az_list = ret[0]
+        azel.el_list = ret[1]
+        azel.start_time = ret[2]
+        print("az : ", ret[0][0]/3600.)
+        print("el : ", ret[1][0]/3600.)
+        print("time : ", ret[2])
+        rospy.loginfo("success publish\n")
+        pub.publish(azel)
+
+        '''
         set_status = rospy.ServiceProxy("list_azel", list_azel)
         response = set_status(ret[0], ret[1], ret[2])
         if response.success:
             rospy.loginfo('set [%s] success' %("azel_list"))
         else:
             rospy.logerr('set [%s] failed' %("azel_list"))
+            '''
 
         return
 
@@ -184,13 +259,13 @@ class antenna_nanten(object):
     
     def convert(self, x, y, ntarg, coordsys, gx, gy, cosydel):
         self.set_offset(cosydel, gx, gy)
+        print(x, y, ntarg, coordsys, gx, gy, cosydel)
         if coordsys.lower() == 'j2000':
             rospy.loginfo("j2000")
-            print(x, y, ntarg, coordsys, gx, gy, cosydel)
             coord = astropy.coordinates.SkyCoord(x, y, frame='fk5', unit='deg')
         elif coordsys.lower() == 'b1950':
             coord = astropy.coordinates.SkyCoord(x, y, frame='fk4', unit='deg')
-        elif coordsys.upper() == 'GALACTIC':
+        elif coordsys.lower() == 'galactic':
             coord = astropy.coordinates.SkyCoord(x, y, frame='galactic', unit='deg')
         else:#planet
             rospy.loginfo("planet")                                  
@@ -210,9 +285,9 @@ class antenna_nanten(object):
 
         return [j2000_ra, j2000_dec]
 
-    def create_azel_list(self, j2000_ra, j2000_dec, lamda, hosei, tv):
+    def create_azel_list(self, j2000_ra, j2000_dec, lamda, hosei, num):
         condition = 10#self.read_status()
-        time.sleep(0.1)
+        #time.sleep(0.1)
         temp = 300#float(condition["InTemp"])+273.
         pressure = 1013#float(condition["Press"])
         humid = 20#float(condition["InHumi"])/100.
@@ -224,11 +299,12 @@ class antenna_nanten(object):
         """
         gx = j2000_ra*math.pi/180.
         gy = j2000_dec*math.pi/180.
-        #tv = time.time() + 1
         az_list = []
         el_list = []
-        for i in range (2):
-            mjd = (tv+i)/24./3600. + 40587.0 # 40587.0 = MJD0
+        tv = time.time() + 1
+        for i in range (num):
+            print(i)
+            mjd = (tv+(i/10))/24./3600. + 40587.0 # 40587.0 = MJD0
             tai_utc = 37.0 # tai_utc=TAI-UTC  2017 JAN from ftp://maia.usno.navy.mil/ser7/tai-utc.dat
             ret = slalib.sla_map(gx, gy, 0, 0, 0, 0, 2000, mjd + (tai_utc + 32.184)/(24.*3600.))
             ret = list(ret)
@@ -237,10 +313,14 @@ class antenna_nanten(object):
             real_el = math.pi/2. - ret[1]
             real_az = real_az*180./math.pi*3600. + self.off_list["off_az"]
             real_el = real_el*180./math.pi*3600. + self.off_list["off_el"]
-            az_list.append(real_az)
-            el_list.append(real_el)
+            real_az_n = real_az/3600.*math.pi/180.
+            real_el_n = real_el/3600.*math.pi/180.
+            #ret = self.coord.apply_kisa(real_az_n, real_el_n, hosei) # until define the set_coord
+            target_az = real_az#+ret[0]
+            target_el = real_el#+ret[1]
+            az_list.append(target_az)
+            el_list.append(target_el)
         return [az_list, el_list, tv]
-
 
 
     def otf_start(self, lambda_on, beta_on, dcos, coord_sys, dx, dy, dt, n, rampt, delay, lamda, hosei, code_mode, off_x, off_y, off_coord, ntarg = 0):
@@ -266,7 +346,8 @@ class antenna_nanten(object):
     def otf_end(self):
         self.antenna.otf_stop()
         return
-    
+
+'''    
 # for dome
     
     def dome_drive_check(self, req):
@@ -294,6 +375,7 @@ class antenna_nanten(object):
     def dome_stop(self):
         self.dome.dome_stop()
         return
+'''
 
 if __name__ == "__main__":
     aa = antenna_nanten()
