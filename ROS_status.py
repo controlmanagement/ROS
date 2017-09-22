@@ -3,7 +3,8 @@
 import time
 import rospy
 from ros_start.msg import Status_antenna_msg
-from ros_start.msg import Weather_msg
+from ros_start.msg import Status_weather_msg
+from ros_start.msg import Status_encoder_msg
 
 class status_main(object):
     param1 = {
@@ -30,22 +31,29 @@ class status_main(object):
               "gen_temp1":0,
               "gen_temp2":0,
               }
+    param3 = {"encoder_az":0,
+              "encoder_el":0
+              }
 
 
     def __init__(self):
         pass
 
     def status_check(self):
-        #rospy.loginfo(self.param1)
+        #time.sleep(1)
+        rospy.loginfo(self.param1)
+        rospy.loginfo("\n")
         rospy.loginfo(self.param2)
+        rospy.loginfo("\n")
+        rospy.loginfo(self.param3)
 
     def callback1(self, req):
         self.param1["limit_az"] = req.limit_az
         self.param1["limit_el"] = req.limit_el
         self.param1["command_az"] = req.command_az
         self.param1["command_el"] = req.command_el
-        self.param1["current_az"] = req.current_az
-        self.param1["current_el"] = req.current_el
+        #self.param1["current_az"] = req.current_az
+        #self.param1["current_el"] = req.current_el
         self.param1["emergency"] = req.emergency
         self.status_check()
 
@@ -67,7 +75,11 @@ class status_main(object):
         self.status_check()
         pass
 
-
+    def callback3(self, req):
+        self.param3["encoder_az"] = req.enc_az/3600.
+        self.param3["encoder_el"] = req.enc_el/3600.
+        self.status_check()
+        pass
 
 
 if __name__ == '__main__':
@@ -75,6 +87,8 @@ if __name__ == '__main__':
     rospy.init_node('Status')
     sub1 = rospy.Subscriber('status_antenna', Status_antenna_msg, st.callback1)
     time.sleep(0.01)
-    sub2 = rospy.Subscriber('status_weather', Weather_msg, st.callback2)
-    print(sub2)
+    sub2 = rospy.Subscriber('status_weather', Status_weather_msg, st.callback2)
+    time.sleep(0.01)
+    sub3 = rospy.Subscriber('status_encoder', Status_encoder_msg, st.callback3)
     rospy.spin()
+
