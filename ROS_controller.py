@@ -10,91 +10,149 @@
 
 import time
 from datetime import datetime as dt
+import sys
 import rospy
-from ros_start.srv import NECSTsrv
-from ros_start.srv import NECSTsrvResponse
+#from ros_start.srv import NECSTsrv
+#from ros_start.srv import NECSTsrvResponse
 from ros_start.msg import drive_msg
-from ros_start.msg import vel_msg
-from ros_start.msg import move_msg
-from ros_start.msg import dome_drive_msg
-from ros_start.msg import dome_move_msg
-from ros_start.msg import membrane_msg
-
+from ros_start.msg import Velocity_mode_msg
+from ros_start.msg import Move_mode_msg
+#from ros_start.msg import dome_drive_msg
+#from ros_start.msg import dome_move_msg
+#from ros_start.msg import membrane_msg
+from ros_start.msg import NECST_msg
+from std_msgs.msg import Bool
 
 class controller(object):
+
+    task = False
     
     def __init__(self):
         rospy.init_node('controller_client')
+        rospy.Subscriber("error", Bool, self.error_check)
+        rospy.Subscriber("task_check", Bool, self.task_check)
+        #pub = rospy.Publisher("stop", String, queue_size = 10)
+        #rospy.spin()
         return
 
-    
+    def error_check(self, req):
+        # error --> True ... stop
+        if not self.error:
+            pass
+        elif self.error:
+            rospy.logerr("Error stop !!\n")
+            print("Error stop !!\n")
+            sys.exit()
+        else:
+            rospy.logerr("Command error !!\n")
+            rospy.logerr("Please check script.\n")
+            print("Command error !!\n")
+            print("Please check script.\n")
+            sys.exit()
+        return
+
+    def task_check(self, req):
+        self.task = req.data 
+        return
+
+    def task_stop(self):
+        while self.task:
+            rospy.loginfo(" move now... \n")
+            print(" move now... \n")
+            time.sleep(0.1)
+            pass
+        return
+
+    '''
     def drive_on(self):
         """drive_on"""
         pub = rospy.Publisher("antenna_drive", drive_msg, queue_size = 10)
-        drive = drive_msg()
-        drive = 1
-        pub.publish(drive) 
+        msg = drive_msg()
+        msg.drive = 1
+        pub.publish(msg) 
         return
 
     def drive_off(self):
         """drive_off"""
-
+        pub = rospy.Publisher("antenna_drive", drive_msg, queue_size = 10)
+        msg = drive_msg()
+        msg.drive = 0
+        pub.publish(msg)
         return
-
-    def velocity_move(self,az_speed,el_speed,dist_arcsec = 5 * 3600):
-        self.ant.vel_move(az_speed,el_speed,dist_arcsec)
+    '''
+        
+    def velocity_move(self, az_speed, el_speed, dist_arcsec = 5 * 3600):
+        pub = rospy.Publisher("antenna_vel", Velocity_mode_msg, queue_size = 10, latch = True)
+        vel = Velocity_mode_msg()
+        vel.az_speed = az_speed
+        vel.el_speed = el_speed
+        vel.dist = dist_arcsec
+        pub.publish(vel)
+        rospy.loginfo(vel)
         return
 
     def radec_move(self, ra, dec, code_mode, off_x = 0, off_y = 0, hosei = 'hosei_230.txt', offcoord = 'HORIZONTAL', lamda=2600, az_rate=12000, el_rate=12000, dcos=1):
         #self.ant.radec_move(ra, dec, code_mode, off_x, off_y, hosei, offcoord, lamda, az_rate, el_rate, dcos)
-        pub = rospy.Publisher("antenna_radec", move_msg, queue_size = 10)
-        mv = move_msg()
-        mv.x = ra
-        mv.y = dec
-        mv.code_mode = code_mode
-        mv.off_x
-        mv.off_y
-        mv.hosei
-        mv.offcoord
-        mv.lamda
-        mv.dcos
+        pub = rospy.Publisher("antenna_radec", Move_mode_msg, queue_size = 10, latch = True)
+        msg = Move_mode_msg()
+        msg.x = ra
+        msg.y = dec
+        msg.code_mode = code_mode
+        msg.off_x = off_x
+        msg.off_y = off_y
+        msg.hosei = hosei
+        msg.offcoord = offcoord
+        msg.lamda = lamda
+        msg.dcos = dcos
         #mv.az_rate ... no inplementation
-        #mv.el_rate ... no inplementation 
-        pub.publish(mv)
+        #mv.el_rate ... no inplementation
+        rospy.loginfo(msg)
+        pub.publish(msg)
         return
     
 
     def galactic_move(self, l, b, off_x = 0, off_y = 0, hosei = 'hosei_230.txt', offcoord = 'HORIZONTAL', lamda=2600, az_rate=12000, el_rate=12000, dcos=0):
-        pub = rospy.Publisher("antenna_galactic", move_msg, queue_size = 10)
-        mv = move_msg()
-        mv.x = l
-        mv.y = b
-        mv.off_x
-        mv.off_y
-        mv.hosei
-        mv.offcoord
-        mv.lamda
-        mv.dcos
+        pub = rospy.Publisher("antenna_galactic", Move_mode_msg, queue_size = 10, latch = True)
+        msg = Move_mode_msg()
+        msg.x = l
+        msg.y = b
+        msg.off_x = off_x
+        msg.off_y = off_y
+        msg.hosei = hosei
+        msg.offcoord = offcoord
+        msg.lamda = lamda
+        msg.dcos = dcos
         #mv.az_rate ... no inplementation
         #mv.el_rate ... no inplementation
-        pub.publish(mv)
+        rospy.loginfo(msg)
+        pub.publish(msg)
         return
 
     def planet_move(self, number, off_x = 0, off_y = 0, hosei = 'hosei_230.txt', offcoord = 'HORIZONTAL', lamda=2600, az_rate=12000, el_rate=12000, dcos=0):
         """1.Mercury 2.Venus 3. 4.Mars 5.Jupiter 6.Saturn 7.Uranus 8.Neptune, 9.Pluto, 10.Moon, 11.Sun"""
-        pub = rospy.Publisher("antenna_galactic", move_msg, queue_size = 10)
-        mv = move_msg()
-        mv.ntarg = number
-        mv.off_x
-        mv.off_y
-        mv.hosei
-        mv.offcoord
-        mv.lamda
-        mv.dcos
+        pub = rospy.Publisher("antenna_planet", Move_mode_msg, queue_size = 10, latch = True)
+        msg = Move_mode_msg()
+        msg.ntarg = number
+        msg.off_x = off_x
+        msg.off_y = off_y
+        msg.hosei = hosei
+        msg.offcoord = offcoord
+        msg.lamda = lamda
+        msg.dcos = dcos
         #mv.az_rate ... no inplementation
         #mv.el_rate ... no inplementation
-        pub.publish(mv)
+        rospy.loginfo(msg)
+        pub.publish(msg)
         return
+
+    def move_stop(self):
+        pub = rospy.Publisher("stop", String, queue_size = 10, latch = True)
+        msg = String()
+        msg.data = "stop"
+        print("move_stop")
+        pub.publish(msg)
+        return
+        
 
     def otf_scan(self, lambda_on, beta_on, dcos, coord_sys, dx, dy, dt, n, rampt, delay, lamda, hosei, code_mode, off_x, off_y, off_coord, ntarg = 0):
         on_start = self.ant.otf_start(lambda_on, beta_on, dcos, coord_sys, dx, dy, dt, n, rampt, delay, lamda, hosei, code_mode, off_x, off_y, off_coord, ntarg)
@@ -113,6 +171,14 @@ class controller(object):
         self.ant.tracking_end()
         return
 
+    def dome_move(self, name, value):
+        pub = rospy.publisher("dome_move", NECST_msg, queue_size = 10, latch = True)
+        dome = dome_msg()
+        dome.name = name
+        dome.value = value
+        pub.publish(dome)
+
+    '''
     def dome_open(self):
         """Dome\u306eopen"""
         self.ant.dome_open()
@@ -153,6 +219,7 @@ class controller(object):
         """Dome\u3068\u671b\u9060\u93e1\u306esync\u306e\u7d42\u4e86"""
         self.ant.dome_track_end()
         return
+        '''
 
 # ===================
 # mirror
@@ -291,6 +358,26 @@ class controller(object):
                    }
                    
         return statusbox
+
+if __name__ == "__main__":
+    con = controller()
+    aa = input("Please input mode (j2000, b1950, gal, planet, vel) : ")
+    if aa == "j2000":
+        con.radec_move(28, 34, "J2000")
+    elif aa == "b1950":
+        con.radec_move(28, 34, "b1950")
+    elif aa == "gal":
+        con.galactic_move(28, 34)
+    elif aa == "planet":
+        con.planet_move(2)
+    elif aa == "vel":
+        con.velocity_move(12000, 12000, 80*3600)
+    else:
+        print("no name")
+    time.sleep(0.1)
+
+
+
 
 
 
