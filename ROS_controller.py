@@ -37,18 +37,19 @@ class controller(object):
 
     def error_check(self, req):
         # error --> True ... stop
-        if not self.error:
+        #if not self.error:
+        if not req.data:
             pass
-        elif self.error:
+        elif req.data:
             rospy.logerr("Error stop !!\n")
             print("Error stop !!\n")
-            sys.exit()
+            rospy.signal_shutdown("Error stop !!\n")
         else:
             rospy.logerr("Command error !!\n")
             rospy.logerr("Please check script.\n")
             print("Command error !!\n")
             print("Please check script.\n")
-            sys.exit()
+            rospy.signal_shutdown("Error stop !!\n")
         return
 
     def task_check(self, req):
@@ -62,6 +63,14 @@ class controller(object):
             time.sleep(0.1)
             pass
         return
+
+    def emergency(self):#shiotani added 09/25
+        pub = rospy.Publisher('emergency', Bool, queue_size = 10, latch = True)
+        emergen_call = Bool()
+        emergen_call.data = True
+        pub.publish(emergen_call)
+        rospy.logwarn('!!!emergency called ROS_control.py!!!')
+        
 
     '''
     def drive_on(self):
@@ -375,13 +384,5 @@ if __name__ == "__main__":
     else:
         print("no name")
     time.sleep(0.1)
-
-
-
-
-
-
-
-
 
 
