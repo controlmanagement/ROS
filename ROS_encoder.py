@@ -46,14 +46,13 @@ class enc_controller(object):
         return [self.enc_Az, self.enc_El]
 
     def sub_enc(self, req):
-        print("sub_enc")
         if req.azel == "az":
             self.vel_az = req.vel_az
         elif req.azel == "el":
             self.vel_el = req.vel_el
         else:
             print("###################################")
-        print(req.vel_az, req.vel_el)
+        #print(req.vel_az, req.vel_el)
         return
 
 
