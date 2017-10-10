@@ -1,12 +1,12 @@
 import datetime
 import time
 import rospy
-from ros_start.msg import Weather_msg
+from ros_start.msg import Status_weather_msg
 
 class weather_controller(object):
     host = "weather@200.91.8.66"
     #dir = "/home/weather/WeatherMonitor/Weather_Data/"
-    dir = "/home/amigos/catkin_ws/src/ros_start/kondo_test/tk_controller/"
+    dir = "/home/amigos/catkin_ws/src/ros_start/ROS/"
     data = [0]*20
 
     def __init__(self):
@@ -14,10 +14,9 @@ class weather_controller(object):
         pass
 
     def pub_func(self):
-        pub = rospy.Publisher("status_weather", Weather_msg, queue_size = 10, latch = True)
-        msg = Weather_msg()
+        pub = rospy.Publisher("status_weather", Status_weather_msg, queue_size = 10, latch = True)
+        msg = Status_weather_msg()
         while not rospy.is_shutdown():
-            print("loop...")
             ret = self.get_weather()
             msg.in_temp = ret[6]
             msg.out_temp = ret[7]
@@ -34,6 +33,7 @@ class weather_controller(object):
             msg.gen_temp1 = ret[18]
             msg.gen_temp2 = ret[19]
             pub.publish(msg)
+            print(msg)
             time.sleep(1)
         return
 
@@ -64,9 +64,10 @@ class weather_controller(object):
         f = open(self.dir+data, "r")
         last_data = f.readlines()[-1]
         f.close()
+        print(f)
         data_list = last_data.strip()
         for i in range(20):
-            self.data[i] = data_list.split()[i].strip(",")
+            self.data[i] = float(data_list.split()[i].strip(","))
 
         return self.data
 
