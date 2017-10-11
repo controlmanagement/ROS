@@ -51,18 +51,21 @@ class controller(object):
 
 
     def authority(self, user = "release"):
-        print(self.access_authority)
         while self.access_authority == "no_data":
             print("wait")
-            time.sleep(0.01)
-        if self.access_authority == "release":
+            time.sleep(1)
+        if self.access_authority == "release" and user == "release":
+            rospy.loginfo("Already release...")
+        elif user == "release":
+            rospy.loginfo("release authority")
+        elif self.access_authority == "release":
             rospy.loginfo("Authority_change.")
         elif self.access_authority == user:
-            rospy.loginfo("Authority is ok.")
+            rospy.loginfo("Authority is already you.")
         else:
             rospy.loginfo("Authority is other!!")
-            sys.exit()
-        pub = rospy.Publisher("authority_change", String, queue_size = 10)
+            #sys.exit()
+        pub = rospy.Publisher("authority_change", String, queue_size = 10,latch=True)
         msg = String()
         msg.data = user
         pub.publish(msg)
@@ -178,7 +181,7 @@ class controller(object):
         rospy.loginfo(vel)
         return
 
-    def radec_move(self, ra, dec, code_mode, off_x = 0, off_y = 0, offcoord = 'HORIZONTAL', hosei = 'hosei_230.txt',  lamda=2600, az_rate=12000, el_rate=12000, dcos=1):
+    def radec_move(self, ra, dec, code_mode, off_x = 0, off_y = 0, offcoord = 'HORIZONTAL', hosei = 'hosei_230.txt',  lamda=2600, dcos=0, az_rate=12000, el_rate=12000,):
         #self.ant.radec_move(ra, dec, code_mode, off_x, off_y, hosei, offcoord, lamda, az_rate, el_rate, dcos)
         pub = rospy.Publisher("antenna_radec", Move_mode_msg, queue_size = 10, latch = True)
         msg = Move_mode_msg()
@@ -243,7 +246,7 @@ class controller(object):
         return
         
 
-    def otf_scan(self, lambda_on, beta_on, dcos, coord_sys, dx, dy, dt, num, rampt, delay, lamda, hosei, code_mode, off_x, off_y, off_coord, ntarg = 0):
+    def otf_scan(self, lambda_on, beta_on, coord_sys, dx, dy, dt, num, rampt, delay, lamda, hosei, code_mode, off_x, off_y, off_coord, dcos=0, ntarg = 0):
         #on_start = self.ant.otf_start(lambda_on, beta_on, dcos, coord_sys, dx, dy, dt, num, rampt, delay, lamda, hosei, code_mode, off_x, off_y, off_coord, ntarg)
         pub = rospy.Publisher("antenna_otf", Otf_mode_msg, queue_size = 10, latch = True)
         msg = Otf_mode_msg()
@@ -283,7 +286,6 @@ class controller(object):
 
     def dome_move(self,dist):
         pub = rospy.Publisher("dome_move", Dome_msg, queue_size = 10, latch = True)
-        time.sleep(1)
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'dome_move'
@@ -515,6 +517,17 @@ class controller(object):
 
 if __name__ == "__main__":
     con = controller()
+    con.authority()
+    time.sleep(2)
+    con.authority('obs')
+    time.sleep(2)
+    con.authority()
+    time.sleep(2)
+    con.authority('obs')
+    time.sleep(2)
+    con.authority('obs')
+
+    '''
     # test
     aa = str(input("Please input mode (j2000, b1950, gal, planet, vel) : "))
     #aa = "otf"
@@ -536,3 +549,4 @@ if __name__ == "__main__":
     time.sleep(0.1)
     #self, lambda_on, beta_on, dcos, coord_sys, dx, dy, dt, num, rampt, delay, lamda, hosei, code_mode, off_x, off_y, off_coord, ntarg = 0
   
+    '''
