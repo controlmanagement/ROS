@@ -378,9 +378,10 @@ class controller(object):
 
     def move_m4(self, position):
         """mirror4\u3092\u52d5\u304b\u3059("in"or"out")"""
-        if position == "in": self.beam.m4_in()
-        elif position == "out": self.beam.m4_out()
-        else : print('set m4position error')
+        pub = rospy.Publisher('m4', String, queue_size = 10, latch = True)
+        status = String()
+        status.data = position
+        pub.publish(status)
         return
     
     def move_hot(self, position):
