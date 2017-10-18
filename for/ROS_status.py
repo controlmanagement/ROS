@@ -151,7 +151,7 @@ class status_main(object):
 
     def callback7(self,req):
         self.param7['position'] = req.m4_position
-	self.status_check()
+        self.status_check()
         pass
 
     def tel_status(self):
@@ -213,4 +213,3 @@ if __name__ == '__main__':
     sub7 = rospy.Subscriber('status_m4', Status_m4_msg, st.callback7)
     print("Subscribe Start")
     rospy.spin()
-    
