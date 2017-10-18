@@ -30,7 +30,8 @@ from std_msgs.msg import Float64
 class controller(object):
 
     task_flag = False
-    tracking_flag = False
+    antenna_tracking_flag = False
+    dome_tracking_flag = False
     access_authority = "no_data"
     
 
@@ -38,7 +39,8 @@ class controller(object):
         rospy.init_node('controller_client')
         rospy.Subscriber("error", Bool, self.error_check)
         rospy.Subscriber("task_check", Bool, self.antenna_flag)
-        rospy.Subscriber("tracking_check", Bool, self.tracking_flag)
+        rospy.Subscriber("tracking_check", Bool, self.antenna_tracking)
+        rospy.Subscriber("dome_tracking_check", Bool, self.dome_tracking)
         rospy.Subscriber("authority_check", String, self.authority_check)
         #pub = rospy.Publisher("stop", String, queue_size = 10)
         #rospy.spin()
@@ -121,12 +123,12 @@ class controller(object):
             pass
         return
 
-    def tracking_flag(self, req):
-        self.tracking_flag = req.data
+    def antenna_tracking(self, req):
+        self.antenna_tracking_flag = req.data
         return
 
-    def tracking_check(self):
-        while not self.tracking_flag:
+    def antenna_tracking_check(self):
+        while not self.antenna_tracking_flag:
             rospy.loginfo(" tracking now... \n")
             print(" tracking now... \n")
             time.sleep(0.01)
@@ -279,13 +281,10 @@ class controller(object):
             flag = False
         return flag
 
-    def tracking_end(self):
-        """tracking\u306e\u7d42\u4e86"""
-        self.ant.tracking_end()
-        return
 
     def dome_move(self,dist):
         pub = rospy.Publisher("dome_move", Dome_msg, queue_size = 10, latch = True)
+        time.sleep(1)
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'dome_move'
@@ -357,6 +356,7 @@ class controller(object):
         #self.ant.dome_track()
         #return
         pub = rospy.Publisher("dome_move", Dome_msg, queue_size = 10, latch = True)
+        time.sleep(1)
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'dome_tracking'
@@ -367,10 +367,22 @@ class controller(object):
         #self.ant.dome_track_end()
         #return
         pub = rospy.Publisher("dome_move", Dome_msg, queue_size = 10, latch = True)
+        time.sleep(1)
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'dome_track_end'
         pub.publish(dome)
+
+    def dome_tracking(self, req):
+        self.dome_tracking_flag = req.data
+        return
+
+    def dome_tracking_check(self):
+        while not self.dome_tracking_flag:
+            rospy.loginfo(" dome_tracking now... \n")
+            print(" dome_tracking now... \n")
+            time.sleep(0.01)
+            pass
 
 # ===================
 # mirror
@@ -383,6 +395,7 @@ class controller(object):
         status.data = position
         pub.publish(status)
         return
+
     
     def move_hot(self, position):
         """hotload\u3092\u52d5\u304b\u3059("in"or"out")"""
@@ -518,20 +531,9 @@ class controller(object):
 
 if __name__ == "__main__":
     con = controller()
-    con.authority()
-    time.sleep(2)
-    con.authority('obs')
-    time.sleep(2)
-    con.authority()
-    time.sleep(2)
-    con.authority('obs')
-    time.sleep(2)
-    con.authority('obs')
 
-    '''
     # test
     aa = str(input("Please input mode (j2000, b1950, gal, planet, vel) : "))
-    #aa = "otf"
     if aa == "j2000" or aa == "":
         con.radec_move(83, -5, "J2000")
     elif aa == "b1950":
@@ -550,4 +552,4 @@ if __name__ == "__main__":
     time.sleep(0.1)
     #self, lambda_on, beta_on, dcos, coord_sys, dx, dy, dt, num, rampt, delay, lamda, hosei, code_mode, off_x, off_y, off_coord, ntarg = 0
   
-    '''
+
