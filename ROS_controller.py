@@ -4,7 +4,7 @@
 """
 ------------------------------------------------
 [History]
-2017/09/15 : kondo takashi
+2017/10/18 : kondo takashi
 ------------------------------------------------
 """
 
@@ -135,7 +135,7 @@ class controller(object):
             pass
 
     def emergency(self):#shiotani added 09/25
-        pub = rospy.Publisher('emergency', Bool, queue_size = 10, latch = True)
+        pub = rospy.Publisher('emergency_stop', Bool, queue_size = 10, latch = True)
         emergen_call = Bool()
         emergen_call.data = True
         pub.publish(emergen_call)
@@ -284,7 +284,6 @@ class controller(object):
 
     def dome_move(self,dist):
         pub = rospy.Publisher("dome_move", Dome_msg, queue_size = 10, latch = True)
-        time.sleep(1)
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'dome_move'
@@ -356,7 +355,6 @@ class controller(object):
         #self.ant.dome_track()
         #return
         pub = rospy.Publisher("dome_move", Dome_msg, queue_size = 10, latch = True)
-        time.sleep(1)
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'dome_tracking'
@@ -367,7 +365,6 @@ class controller(object):
         #self.ant.dome_track_end()
         #return
         pub = rospy.Publisher("dome_move", Dome_msg, queue_size = 10, latch = True)
-        time.sleep(1)
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'dome_track_end'
