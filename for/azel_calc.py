@@ -2,7 +2,7 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_body
 from astropy.time import Time
 from datetime import datetime as dt
-import coord
+#import coord
 import time
 import math
 import sys
@@ -39,9 +39,9 @@ class azel_calc(object):
         #print(num)
         _az = np.radians(ret_azel[0]/3600.)
         _el = np.radians(ret_azel[1]/3600.)
-        ret = coord.apply_kisa(_az, _el, hosei)
-        target_az = ret_azel[0]+ret[0]
-        target_el = ret_azel[1]+ret[1]
+        #ret = coord.apply_kisa(_az, _el, hosei)
+        target_az = ret_azel[0]#+ret[0]
+        target_el = ret_azel[1]#+ret[1]
         return [target_az, target_el]
 
     def velocity_calc(self, az_speed, el_speed, dist, enc_az, enc_el):
