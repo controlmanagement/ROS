@@ -33,26 +33,26 @@ class controller(object):
     def __init__(self):
         rospy.init_node('controller_client')
         rospy.Subscriber("error", Bool, self.error_check)
-        rospy.Subscriber("task_check", Bool, self.antenna_flag)
+        #rospy.Subscriber("task_check", Bool, self.antenna_flag)
         rospy.Subscriber("tracking_check", Bool, self.antenna_tracking)
         rospy.Subscriber("dome_tracking_check", Bool, self.dome_tracking)
         rospy.Subscriber("authority_check", String, self.authority_check)
 
-        pub = rospy.Publisher("getting_data", Bool, queue_size=10)
-        pub = rospy.Publisher("authority_change", String, queue_size = 10,latch=True)
-        pub = rospy.Publisher("getting_data", Float64, queue_size=10)
-        pub = rospy.Publisher('emergency_stop', Bool, queue_size = 10, latch = True)
-        pub = rospy.Publisher("antenna_drive", String, queue_size = 10)
-        pub = rospy.Publisher("antenna_contactor", String, queue_size = 10)
-        pub = rospy.Publisher("antenna_vel", Velocity_mode_msg, queue_size = 10, latch = True)
-        pub = rospy.Publisher("antenna_radec", Move_mode_msg, queue_size = 10, latch = True)
-        pub = rospy.Publisher("antenna_galactic", Move_mode_msg, queue_size = 10, latch = True)
-        pub = rospy.Publisher("antenna_planet", Move_mode_msg, queue_size = 10, latch = True)
-        pub = rospy.Publisher("move_stop", String, queue_size = 10, latch = True)
-        pub = rospy.Publisher("antenna_otf", Otf_mode_msg, queue_size = 10, latch = True)
-        pub = rospy.Publisher("dome_move", Dome_msg, queue_size = 10, latch = True)
-        pub = rospy.Publisher('m4', String, queue_size = 10, latch = True)
-        pub = rospy.Publisher("hot", String, queue_size = 10, latch = True)        
+        self.pub1 = rospy.Publisher("observation_start_", Bool, queue_size=10)#observation
+        self.pub2 = rospy.Publisher("authority_change", String, queue_size = 10,latch=True)
+        self.pub3 = rospy.Publisher("getting_data", Float64, queue_size=10)
+        self.pub4 = rospy.Publisher('emergency_stop', Bool, queue_size = 10, latch = True)
+        self.pub5 = rospy.Publisher("antenna_drive", String, queue_size = 10)
+        self.pub6 = rospy.Publisher("antenna_contactor", String, queue_size = 10)
+        self.pub7 = rospy.Publisher("antenna_vel", Velocity_mode_msg, queue_size = 10, latch = True)
+        self.pub8 = rospy.Publisher("antenna_radec", Move_mode_msg, queue_size = 10, latch = True)
+        self.pub9 = rospy.Publisher("antenna_galactic", Move_mode_msg, queue_size = 10, latch = True)
+        self.pub10 = rospy.Publisher("antenna_planet", Move_mode_msg, queue_size = 10, latch = True)
+        self.pub11 = rospy.Publisher("move_stop", String, queue_size = 10, latch = True)
+        self.pub12 = rospy.Publisher("antenna_otf", Otf_mode_msg, queue_size = 10, latch = True)
+        self.pub13 = rospy.Publisher("dome_move", Dome_msg, queue_size = 10, latch = True)
+        self.pub14 = rospy.Publisher('m4', String, queue_size = 10, latch = True)
+        self.pub15 = rospy.Publisher("hot", String, queue_size = 10, latch = True)        
 
         return
     
@@ -78,14 +78,8 @@ class controller(object):
             #sys.exit()
         msg = String()
         msg.data = user
-        pub.publish(msg)
+        self.pub2.publish(msg)
         time.sleep(0.01)
-
-    def spectrometer(self, exposure):
-        msg = Float64()
-        msg.data = exposure
-        pub.publish(msg)
-        return
 
     def error_check(self, req):
         # error --> True ... stop
@@ -104,6 +98,7 @@ class controller(object):
             rospy.signal_shutdown("Error stop !!\n")
         return
 
+    """
     def antenna_flag(self, req):
         self.task_flag = req.data 
         return
@@ -115,6 +110,7 @@ class controller(object):
             time.sleep(0.01)
             pass
         return
+        """
 
     def antenna_tracking(self, req):
         self.antenna_tracking_flag = req.data
@@ -130,7 +126,7 @@ class controller(object):
     def emergency(self):#shiotani added 09/25
         emergen_call = Bool()
         emergen_call.data = True
-        pub.publish(emergen_call)
+        self.pub4.publish(emergen_call)
         rospy.logwarn('!!!emergency called ROS_control.py!!!')
         
 
@@ -139,26 +135,26 @@ class controller(object):
         """drive_on"""
         msg = String()
         msg.data = "on"
-        pub.publish(msg) 
+        self.pub5.publish(msg) 
         return
 
     def drive_off(self):
         """drive_off"""
         msg = String()
         msg.data = "off"
-        pub.publish(msg)
+        self.pub5.publish(msg)
         return
 
     def contactor_on(self):
         msg = String()
         msg.data = "on"
-        pub.publish(msg)
+        self.pub6.publish(msg)
         return
 
     def contactor_off(self):
         msg = String()
         msg.data = "off"
-        pub.publish(msg)
+        self.pub6.publish(msg)
         return
 
     def velocity_move(self, az_speed, el_speed, dist_arcsec = 5 * 3600):
@@ -166,7 +162,7 @@ class controller(object):
         vel.az_speed = az_speed
         vel.el_speed = el_speed
         vel.dist = dist_arcsec
-        pub.publish(vel)
+        self.pub7.publish(vel)
         rospy.loginfo(vel)
         return
 
@@ -185,7 +181,7 @@ class controller(object):
         #mv.az_rate ... no inplementation
         #mv.el_rate ... no inplementation
         rospy.loginfo(msg)
-        pub.publish(msg)
+        self.pub8.publish(msg)
         return
     
 
@@ -203,7 +199,7 @@ class controller(object):
         #mv.az_rate ... no inplementation
         #mv.el_rate ... no inplementation
         rospy.loginfo(msg)
-        pub.publish(msg)
+        self.pub9.publish(msg)
         return
 
     def planet_move(self, number, off_x = 0, off_y = 0, offcoord = 'HORIZONTAL', hosei = 'hosei_230.txt', lamda=2600, az_rate=12000, el_rate=12000, dcos=0):
@@ -220,14 +216,14 @@ class controller(object):
         #mv.az_rate ... no inplementation
         #mv.el_rate ... no inplementation
         rospy.loginfo(msg)
-        pub.publish(msg)
+        self.pub10.publish(msg)
         return
 
     def move_stop(self):
         msg = String()
         msg.data = "stop"
         print("move_stop")
-        pub.publish(msg)
+        self.pub11.publish(msg)
         return
         
 
@@ -251,7 +247,7 @@ class controller(object):
         msg.rampt = rampt
         msg.delay = delay
         rospy.loginfo(msg)
-        pub.publish(msg)
+        self.pub12.publish(msg)
         
         return 
 
@@ -272,7 +268,7 @@ class controller(object):
         dome = Dome_msg()
         dome.name = 'target_az'
         dome.value = str(dist)
-        pub.publish(dome)
+        self.pub13.publish(dome)
 
     
     def dome_open(self):
@@ -282,7 +278,7 @@ class controller(object):
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'dome_open'
-        pub.publish(dome)
+        self.pub13.publish(dome)
     
     def dome_close(self):
         #"""Dome\u306eclose"""
@@ -291,7 +287,7 @@ class controller(object):
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'dome_close'
-        pub.publish(dome)
+        self.pub13.publish(dome)
         
     def memb_open(self):
         """\u30e1\u30f3\u30d6\u30ec\u30f3\u306eopen"""
@@ -300,7 +296,7 @@ class controller(object):
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'memb_open'
-        pub.publish(dome)
+        self.pub13.publish(dome)
 
     def memb_close(self):
         #"""\u30e1\u30f3\u30d6\u30ec\u30f3\u306eopenclose"""
@@ -309,7 +305,7 @@ class controller(object):
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'memb_close'
-        pub.publish(dome)
+        self.pub13.publish(dome)
         
     #def dome_move(self, dome_az):
        # """Dome\u3092(dome_az)\u306b\u52d5\u4f5c"""
@@ -324,7 +320,7 @@ class controller(object):
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'dome_stop'
-        pub.publish(dome)
+        self.pub13.publish(dome)
         
     def dome_track(self):
         """Dome\u3068\u671b\u9060\u93e1\u306esync"""
@@ -333,7 +329,7 @@ class controller(object):
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'dome_tracking'
-        pub.publish(dome)
+        self.pub13.publish(dome)
 
     def dome_track_end(self):
         """Dome\u3068\u671b\u9060\u93e1\u306esync\u306e\u7d42\u4e86"""
@@ -342,7 +338,7 @@ class controller(object):
         dome = Dome_msg()
         dome.name = 'command'
         dome.value = 'dome_track_end'
-        pub.publish(dome)
+        self.pub13.publish(dome)
 
     def dome_tracking(self, req):
         self.dome_tracking_flag = req.data
@@ -363,7 +359,7 @@ class controller(object):
         """mirror4\u3092\u52d5\u304b\u3059("in"or"out")"""
         status = String()
         status.data = position
-        pub.publish(status)
+        self.pub14.publish(status)
         return
 
     
@@ -375,7 +371,7 @@ class controller(object):
         #return
         status = String()
         status.data = position
-        pub.publish(status)
+        self.pub15.publish(status)
         return
 
     def m2_move(self, dist):
@@ -397,7 +393,13 @@ class controller(object):
         else:
             rospy.logerr("argument is error!!")
             sys.exit()
-        pub.publish(msg)
+        self.pub1.publish(msg)
+        return
+
+    def spectrometer(self, exposure):
+        msg = Float64()
+        msg.data = exposure
+        self.pub3.publish(msg)
         return
 
 
