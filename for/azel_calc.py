@@ -42,6 +42,8 @@ class azel_calc(object):
         #ret = coord.apply_kisa(_az, _el, hosei)
         target_az = ret_azel[0]#+ret[0]
         target_el = ret_azel[1]#+ret[1]
+        if target_az > 260*3600.:
+            target_az -= 360*3600.
         return [target_az, target_el]
 
     def velocity_calc(self, az_speed, el_speed, dist, enc_az, enc_el):
@@ -77,7 +79,7 @@ class azel_calc(object):
             sys.exit()
 
 
-        if offcoord.lower() == "j2000":
+        if offcoord.lower() == "j2000" or offcoord.lower() == "equatorial":
             off_coord = SkyCoord(off_x,off_y,frame='fk5',unit='arcsec',)
             ret = self.dcos_calc(on_coord.fk5.ra.deg, on_coord.fk5.dec.deg, 
                       off_coord.fk5.ra.deg, off_coord.fk5.dec.deg, dcos)
