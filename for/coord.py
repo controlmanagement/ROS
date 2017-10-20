@@ -332,7 +332,8 @@ class coord_calc(object):
             return vobs
         elif gcalc_flag == 2:
             return lst
-    
+            '''
+
     def read_kisa_file(self, hosei, num):
         f = open(hosei)
         line = f.readline()
@@ -362,4 +363,3 @@ class coord_calc(object):
         kisa = [kisa[i]+diff[i] for i in range(kisa)]
         """
         return kisa
-        '''
