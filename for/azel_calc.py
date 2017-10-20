@@ -2,7 +2,7 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_body
 from astropy.time import Time
 from datetime import datetime as dt
-#import coord
+import coord
 import time
 import math
 import sys
@@ -23,6 +23,11 @@ class azel_calc(object):
 
     planet = {0:"sun", 1:"mercury", 2:"venus", 3:"earth", 4:"mars", 5:"jupiter", 6:"saturn", 7:"uranus", 8:"neptune", }
 
+    def __init__(self):
+        self.coord = coord.coord_calc()
+        pass
+
+
     def dcos_calc(self, x, y, off_x, off_y, dcos):
         if dcos == 1:
             y += off_y
@@ -32,16 +37,16 @@ class azel_calc(object):
             x += off_x
         return [x, y]
         
-    def kisa_calc(self, altaz, dcos, num):
+    def kisa_calc(self, altaz, dcos, hosei, num):
         ret_azel = self.dcos_calc(altaz[num].az.arcsec, altaz[num].alt.arcsec, self.off_az, self.off_el, dcos)
         #ret_azel = self.dcos_calc(40, 50, self.off_az, self.off_el, dcos)
         #ret_azel = [60,30]
         #print(num)
         _az = np.radians(ret_azel[0]/3600.)
         _el = np.radians(ret_azel[1]/3600.)
-        #ret = coord.apply_kisa(_az, _el, hosei)
-        target_az = ret_azel[0]#+ret[0]
-        target_el = ret_azel[1]#+ret[1]
+        ret = self.coord.apply_kisa_test(_az, _el, hosei)
+        target_az = ret_azel[0]+ret[0]
+        target_el = ret_azel[1]+ret[1]
         if target_az > 260*3600.:
             target_az -= 360*3600.
         return [target_az, target_el]
@@ -144,14 +149,15 @@ class azel_calc(object):
         #print(loop)
         ss = [altaz[i] for i in range(loop)]
         #print(loop)
-        az_list = [self.kisa_calc(ss,dcos, i)[0] for i in range(loop)]
-        el_list = [self.kisa_calc(ss,dcos, i)[1] for i in range(loop)]
+        az_list = [self.kisa_calc(ss, dcos, hosei, i)[0] for i in range(loop)]
+        el_list = [self.kisa_calc(ss, dcos, hosei, i)[1] for i in range(loop)]
         
 
         
         print("create_list end")
-        now = float(now.strftime("%s"))+9*3600. + float(now.strftime("%f"))*1e-6#nagoya
+        #now = float(now.strftime("%s"))+9*3600. + float(now.strftime("%f"))*1e-6#nagoya
         #now = float(now.strftime("%s"))-3*3600. + float(now.strftime("%f"))*1e-6#chile
+        now = float(now.strftime("%s")) + float(now.strftime("%f"))*1e-6#utc
         print("az :",az_list[0]/3600.,"el :", el_list[0]/3600., "time : ", now)
         print("list length", len(az_list),len(el_list))
         return[az_list, el_list, now]
@@ -161,5 +167,6 @@ if __name__ == "__main__":
     qq = azel_calc()
     from datetime import datetime as dt
     now = dt.utcnow()
-    qq.coordinate_calc(83, -5, 0, code_mode="j2000", off_x=10, off_y=10, offcoord="j2000", hosei="", lamda=2600, dcos=1, temp=20, press=5, humi=0.07, now=now, loop = 500, time_rate=0.)
+    qq.coordinate_calc(83, -5, 0, code_mode="j2000", off_x=10, off_y=10, offcoord="j2000", 
+                       hosei="hosei_230.txt", lamda=2600, dcos=1, temp=20, press=5, humi=0.07, now=now, loop = 500, time_rate=0.)
     #qq.coordinate_calc(30, 40, 0, code_mode="planet", off_x=10, off_y=10, offcoord="horizontal", hosei="", lamda=2600, dcos=1, temp=20, press=5, humi=0.07, now=now, loop = 50, time_rate=0.)
