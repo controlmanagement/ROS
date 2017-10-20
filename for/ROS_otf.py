@@ -326,7 +326,7 @@ while rp_num < rp:
                                obs['restfreq_1']/1000., obs['restfreq_2']/1000., sb1, sb2, 
                                8038.000000000/1000., 9301.318999999/1000.)
             dp1 = dp.set_track(lambda_on, beta_on, vlsr, coordsys, 
-                               sx + num*gridx, sy + num*gridy, offset_dcos, cosydel, 
+                               sx + num*gridx, sy + num*gridy, dcos, cosydel, 
                                integ_off*2+rampt, obs['restfreq_1']/1000., obs['restfreq_2']/1000., 
                                sb1, sb2, 8038.000000000/1000., 9301.318999999/1000.)
             
