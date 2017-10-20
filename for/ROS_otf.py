@@ -44,16 +44,17 @@ import numpy
 import obs_log
 import doppler_nanten
 dp = doppler_nanten.doppler_nanten()
-import controller
-con = controller.controller()
+import ROS_controller
+con = ROS_controller.controller()
 con.dome_track()
+con.move_stop()
 import sys
 import signal
 def handler(num, flame):
     print("!!ctrl+C!!")
     print("STOP MOVING")
-    con.tracking_end()
-    con.dome_track_end()
+    con.move_stop()
+    con.dome_stop()
     sys.exit()
 signal.signal(signal.SIGINT, handler)
 
@@ -147,13 +148,13 @@ dcos = obs['otadel']# dcos
 integ_on = obs['exposure']# on iinteg
 integ_off = obs['exposure_off']# off integ
 
-lamdel_on = obs['lamdel']# offset_on
-betdel_on = obs['betdel']# offset_on
+#lamdel_on = obs['lamdel']# offset_on
+#betdel_on = obs['betdel']# offset_on
 lamdel_off = obs['lamdel_off']# offset_off
 betdel_off = obs['betdel_off']# offset_off
 cosydel = obs['cosydel'].lower()# offset_coord
 offset_dcos = obs['otadel_off']# offset_dcos
-
+vlsr = obs["vlsr"]
 
 
 # Save file
@@ -169,22 +170,6 @@ os.makedirs(savedir)
 
 # Scan Parameters
 # --------------- 
-
-lambda_on = obs['lambda_on']#on[deg]
-beta_on = obs['beta_on']#on[deg]
-lambda_off = obs['lambda_off']# off[deg]
-beta_off = obs['beta_off']# off[deg]
-coordsys = obs['coordsys'].lower()# coord
-dcos = obs['otadel']# dcos
-integ_on = obs['exposure']# on iinteg
-integ_off = obs['exposure_off']# off integ
-
-lamdel_on = obs['lamdel']# offset_on[arcsec]
-betdel_on = obs['betdel']# offset_on[arcsec]
-lamdel_off = obs['lamdel_off']# offset_off[arcsec]
-betdel_off = obs['betdel_off']# offset_off[arcsec]
-cosydel = obs['cosydel'].lower()# offset_coord
-offset_dcos = obs['otadel_off']# offset_dcos
 
 sx = obs['lamdel_off']+obs['start_pos_x']#[arcsec]
 sy = obs['betdel_off']+obs['start_pos_y']#[arcsec]
@@ -217,7 +202,8 @@ elif obs['coordsys'].lower() == 'galactic':
 elif obs['coordsys'].lower() == 'horizontal':
     coord_sys = 'HORIZONTAL'
 else:
-    con.tracking_end()
+    con.move_stop()
+    con.dome_stop()
     print('coord_sys:Error')
     sys.exit()
 if obs['cosydel'].lower() == 'j2000' or obs['cosydel'].lower() == 'b1950':
@@ -227,7 +213,8 @@ elif obs['cosydel'].lower() == 'galactic':
 elif obs['cosydel'].lower() == 'horizontal':
     cosydel = 'HORIZONTAL'
 else:
-    con.tracking_end()
+    con.move_stop()
+    con.dome_stop
     print('cosydel:Error')
     sys.exit()
 if obs['lo1st_sb_1'] == 'U':#後半に似たのがあるけど気にしない
@@ -291,7 +278,8 @@ beta_list = []
 print('Start experimentation')
 print('')
 
-savetime = con.read_status()['Time']
+#savetime = con.read_status()['Time']
+savetime = time.time()
 
 rp = int(obs['nTest'])
 rp_num = 0
@@ -306,22 +294,22 @@ while rp_num < rp:
     while num < n: 
         print('observation :'+str(num))
         print('tracking start')
-        con.tracking_end()
+        con.move_stop()
         
         if coord_sys == 'EQUATORIAL':
-            con.radec_move(offx, offy, coordsys,
+            con.radec_move(lambda_off, beta_off, coordsys,
                            off_x=lamdel_off, off_y=betdel_off, 
                            offcoord = cosydel)
             pass
         elif coord_sys == 'GALACTIC':
-            con.galactic_move(offx, offy,
+            con.galactic_move(lambda_off, beta_off,
                               off_x=lamdel_off, off_y=betdel_off, 
                               offcoord = cosydel)
         elif coord_sys == 'HORIZONTAL':
             pass
 
         print("check_track")
-        con.tracking_check()
+        con.antenna_tracking_check()
         con.dome_tracking_check()
         print('tracking OK')
 
@@ -332,18 +320,19 @@ while rp_num < rp:
         
             print('get spectrum...')
             ###con.doppler_calc()
-            dp2 = dp.set_track(obs['lambda_on'], obs['beta_on'], obs['vlsr'], obs['coordsys'], 
+            dp2 = dp.set_track(lambda_on, beta_on, vlsr, coordsys, 
                                sx + num*gridx + total_count*dx, sy + num*gridy + total_count*dy, 
-                               offset_dcos, obs['cosydel'], integ_off*2+rampt+(dt*scan_point), 
+                               dcos, cosydel, integ_off*2+rampt+(dt*scan_point), 
                                obs['restfreq_1']/1000., obs['restfreq_2']/1000., sb1, sb2, 
                                8038.000000000/1000., 9301.318999999/1000.)
-            dp1 = dp.set_track(obs['lambda_on'], obs['beta_on'], obs['vlsr'], obs['coordsys'], 
-                               sx + num*gridx, sy + num*gridy, offset_dcos, obs['cosydel'], 
+            dp1 = dp.set_track(lambda_on, beta_on, vlsr, coordsys, 
+                               sx + num*gridx, sy + num*gridy, offset_dcos, cosydel, 
                                integ_off*2+rampt, obs['restfreq_1']/1000., obs['restfreq_2']/1000., 
                                sb1, sb2, 8038.000000000/1000., 9301.318999999/1000.)
             
             con.observation("start", integ_off)
             time.sleep(integ_off)
+
             '''
             d = con.oneshot(exposure=integ_off)
             d1 = d['dfs1'][0]
@@ -384,13 +373,13 @@ while rp_num < rp:
 
             '''
         else:
-            dp2 = dp.set_track(obs['lambda_on'], obs['beta_on'], obs['vlsr'], obs['coordsys'], 
+            dp2 = dp.set_track(lambda_on, beta_on, vlsr, coordsys, 
                                sx + num*gridx + total_count*dx, sy + num*gridy + total_count*dy, 
-                               offset_dcos, obs['cosydel'], integ_off+rampt+(dt*scan_point), 
+                               dcos, cosydel, integ_off+rampt+(dt*scan_point), 
                                obs['restfreq_1']/1000., obs['restfreq_2']/1000., sb1, sb2, 
                                8038.000000000/1000., 9301.318999999/1000.)
-            dp1 = dp.set_track(obs['lambda_on'], obs['beta_on'], obs['vlsr'], obs['coordsys'], 
-                               sx + num*gridx , sy + num*gridy, offset_dcos, obs['cosydel'], 
+            dp1 = dp.set_track(lambda_on, beta_on, vlsr, coordsys, 
+                               sx + num*gridx , sy + num*gridy, offset_dcos, cosydel, 
                                integ_off+rampt, obs['restfreq_1']/1000., obs['restfreq_2']/1000., 
                                sb1, sb2, 8038.000000000/1000., 9301.318999999/1000.)
             pass
@@ -444,26 +433,26 @@ while rp_num < rp:
         '''
 
         print('move ON')
-        con.tracking_end()
+        con.move_stop()
         ssx = (sx + num*gridx) - float(dx)/float(dt)*rampt-float(dx)/2.#rampの始まり
         ssy = (sy + num*gridy) - float(dy)/float(dt)*rampt-float(dy)/2.#rampの始まり
         if coord_sys == 'EQUATORIAL':
-            con.radec_move(lambda_on, beta_on, obs['coordsys'],
+            con.radec_move(lambda_on, beta_on, coordsys,
                            off_x = ssx,
                            off_y = ssy,
                            offcoord = cosydel,
-                           dcos = offset_dcos)
+                           dcos = dcos)
         elif coord_sys == 'GALACTIC':
             con.galactic_move(lambda_on, beta_on,
                               off_x= ssx, 
                               off_y= ssy, 
                               offcoord = cosydel,
-                              dcos = offset_dcos)
+                              dcos = dcos)
         else:
             pass
 
         print('moving...')
-        con.tracking_check()
+        con.antenna_tracking_check()
         con.dome_tracking_check()
         
         print('reach ramp_start')#rampまで移動
@@ -538,7 +527,7 @@ while rp_num < rp:
             '''
 
         print('stop')
-        con.tracking_end()
+        con.move_stop()
 
         num += 1
         continue
@@ -593,8 +582,8 @@ beta_list.append(obs['beta_off'])
 con.move_hot('out')
 
 print('observation end')
-con.tracking_end()
-con.dome_track_end()
+con.move_stop()
+con.dome_stop()
 
 
 '''
